@@ -216,14 +216,17 @@ func check(err error) {
 }
 
 func prefetchUncles(blockHash common.Hash, uncleHash common.Hash, hasher types.TrieHasher) {
+	fmt.Println("eth_getUncleCountByBlockHash begin")
 	jr := jsonrespi{}
 	{
 		r := jsonreq{Jsonrpc: "2.0", Method: "eth_getUncleCountByBlockHash", Id: 1}
 		r.Params = make([]interface{}, 1)
 		r.Params[0] = blockHash.Hex()
+		fmt.Println(blockHash.Hex())
 		jsonData, _ := json.Marshal(r)
 		check(json.NewDecoder(getAPI(jsonData)).Decode(&jr))
 	}
+	fmt.Println("eth_getUncleCountByBlockHash done")
 
 	var uncles []*types.Header
 	for u := 0; u < int(jr.Result); u++ {
@@ -245,6 +248,7 @@ func prefetchUncles(blockHash common.Hash, uncleHash common.Hash, hasher types.T
 		//fmt.Println(uncleHeader)
 		//fmt.Println(jr2.Result)
 	}
+	fmt.Println("eth_getUncleByBlockHashAndIndex done")
 
 	unclesRlp, _ := rlp.EncodeToBytes(uncles)
 	hash := crypto.Keccak256Hash(unclesRlp)
@@ -262,6 +266,7 @@ func PrefetchBlock(blockNumber *big.Int, startBlock bool, hasher types.TrieHashe
 	r.Params[0] = fmt.Sprintf("0x%x", blockNumber.Int64())
 	r.Params[1] = true
 	jsonData, err := json.Marshal(r)
+	fmt.Println("1")
 	check(err)
 
 	/*dat, _ := ioutil.ReadAll(getAPI(jsonData))
@@ -271,7 +276,8 @@ func PrefetchBlock(blockNumber *big.Int, startBlock bool, hasher types.TrieHashe
 	check(json.NewDecoder(getAPI(jsonData)).Decode(&jr))
 	//fmt.Println(jr.Result)
 	blockHeader := jr.Result.ToHeader()
-
+	fmt.Printf("%+v\n", blockHeader)
+	fmt.Println("2")
 	// put in the start block header
 	if startBlock {
 		blockHeaderRlp, err := rlp.EncodeToBytes(&blockHeader)
@@ -280,10 +286,12 @@ func PrefetchBlock(blockNumber *big.Int, startBlock bool, hasher types.TrieHashe
 		preimages[hash] = blockHeaderRlp
 		emptyHash := common.Hash{}
 		if inputs[0] == emptyHash {
+			fmt.Println("inputs 0 is ", hash)
 			inputs[0] = hash
 		}
 		return
 	}
+	fmt.Println("3")
 
 	// second block
 	if blockHeader.ParentHash != inputs[0] {
@@ -296,6 +304,7 @@ func PrefetchBlock(blockNumber *big.Int, startBlock bool, hasher types.TrieHashe
 	inputs[4] = common.BigToHash(big.NewInt(int64(blockHeader.GasLimit)))
 	inputs[5] = common.BigToHash(big.NewInt(int64(blockHeader.Time)))
 
+	fmt.Println("save inputs")
 	// save the inputs
 	saveinput := make([]byte, 0)
 	for i := 0; i < len(inputs); i++ {
@@ -305,7 +314,7 @@ func PrefetchBlock(blockNumber *big.Int, startBlock bool, hasher types.TrieHashe
 	preimages[inputhash] = saveinput
 	ioutil.WriteFile(fmt.Sprintf("%s/input", root), inputhash.Bytes(), 0644)
 	//ioutil.WriteFile(fmt.Sprintf("%s/input", root), saveinput, 0644)
-
+	fmt.Println("set outputs")
 	// secret input aka output
 	outputs[0] = blockHeader.Root
 	outputs[1] = blockHeader.ReceiptHash
@@ -327,9 +336,11 @@ func PrefetchBlock(blockNumber *big.Int, startBlock bool, hasher types.TrieHashe
 		fmt.Println(testTxHash, "!=", blockHeader.TxHash)
 		panic("tx hash derived wrong")
 	}
+	fmt.Println("save txs done")
 
 	// save the uncles
 	prefetchUncles(blockHeader.Hash(), blockHeader.UncleHash, hasher)
+	fmt.Println("prefetch uncles done")
 }
 
 func getProofAccount(blockNumber *big.Int, addr common.Address, skey common.Hash, storage bool) []string {

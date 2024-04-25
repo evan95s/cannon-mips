@@ -628,10 +628,11 @@ func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
 		data:       tx.Data(),
 		accessList: tx.AccessList(),
 		isFake:     false,
+		mint:       tx.Mint(),
 	}
-	if dep, ok := tx.inner.(*DepositTx); ok {
-		msg.mint = dep.Mint
-	}
+	// if dep, ok := tx.inner.(*DepositTx); ok {
+	// 	msg.mint = dep.Mint
+	// }
 	// If baseFee provided, set gasPrice to effectiveGasPrice.
 	if baseFee != nil {
 		msg.gasPrice = math.BigMin(msg.gasPrice.Add(msg.gasTipCap, baseFee), msg.gasFeeCap)

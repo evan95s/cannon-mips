@@ -589,8 +589,8 @@ func (s *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) 
 // CreateAccount is called during the EVM CREATE operation. The situation might arise that
 // a contract does the following:
 //
-//   1. sends funds to sha(account ++ (nonce + 1))
-//   2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
+//  1. sends funds to sha(account ++ (nonce + 1))
+//  2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
 //
 // Carrying over the balance ensures that Ether doesn't disappear.
 func (s *StateDB) CreateAccount(addr common.Address) {
@@ -811,8 +811,10 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 // It is called in between transactions to get the root hash that
 // goes into transaction receipts.
 func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
+	fmt.Println("first, s.trie.Hash() is ", s.trie.Hash())
 	// Finalise all the dirty storage states and write them into the tries
 	s.Finalise(deleteEmptyObjects)
+	fmt.Println("finalise, s.trie.Hash() is ", s.trie.Hash())
 
 	// If there was a trie prefetcher operating, it gets aborted and irrevocably
 	// modified after we start retrieving tries. Remove it from the statedb after
@@ -856,6 +858,7 @@ func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 			s.AccountUpdated += 1
 		}
 		usedAddrs = append(usedAddrs, common.CopyBytes(addr[:])) // Copy needed for closure
+		// fmt.Println("[addr] trie hash is ", s.trie.Hash())
 	}
 	if prefetcher != nil {
 		prefetcher.used(s.originalRoot, usedAddrs)
@@ -867,6 +870,7 @@ func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.AccountHashes += time.Since(start) }(time.Now())
 	}
+	// fmt.Println("now trie hash is ", s.trie.Hash())
 	return s.trie.Hash()
 }
 

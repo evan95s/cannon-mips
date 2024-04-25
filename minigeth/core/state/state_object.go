@@ -376,6 +376,7 @@ func (s *stateObject) updateRoot(db Database) {
 		defer func(start time.Time) { s.db.StorageHashes += time.Since(start) }(time.Now())
 	}
 	s.data.Root = s.trie.Hash()
+	fmt.Println("root become ", s.data.Root)
 }
 
 // CommitTrie the storage trie of the object to db.

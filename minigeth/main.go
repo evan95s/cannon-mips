@@ -28,6 +28,7 @@ func check(err error) {
 }
 
 func main() {
+	fmt.Println(("this is main"))
 	if len(os.Args) > 2 {
 		f, err := os.Create(os.Args[2])
 		if err != nil {

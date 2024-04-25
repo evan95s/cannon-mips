@@ -32,8 +32,10 @@ import (
 )
 
 var (
-	EmptyRootHash  = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-	EmptyUncleHash = rlpHash([]*Header(nil))
+	EmptyRootHash = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	// EmptyWithdrawalsHash is the known hash of the empty withdrawal set.
+	EmptyWithdrawalsHash = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	EmptyUncleHash       = rlpHash([]*Header(nil))
 )
 
 // A BlockNonce is a 64-bit hash which proves (combined with the
@@ -92,6 +94,8 @@ type Header struct {
 		// Random was added during the merge and contains the BeaconState randomness
 		Random common.Hash `json:"random" rlp:"optional"`
 	*/
+	// WithdrawalsHash was added by EIP-4895 and is ignored in legacy headers.
+	WithdrawalsHash *common.Hash `json:"withdrawalsRoot" rlp:"optional"`
 }
 
 // field type overrides for gencodec
@@ -147,6 +151,9 @@ func (h *Header) SanityCheck() error {
 // EmptyBody returns true if there is no additional 'body' to complete the header
 // that is: no transactions and no uncles.
 func (h *Header) EmptyBody() bool {
+	if h.WithdrawalsHash != nil {
+		return h.TxHash == EmptyRootHash && *h.WithdrawalsHash == EmptyWithdrawalsHash
+	}
 	return h.TxHash == EmptyRootHash && h.UncleHash == EmptyUncleHash
 }
 
@@ -251,6 +258,10 @@ func CopyHeader(h *Header) *Header {
 	if len(h.Extra) > 0 {
 		cpy.Extra = make([]byte, len(h.Extra))
 		copy(cpy.Extra, h.Extra)
+	}
+	if h.WithdrawalsHash != nil {
+		cpy.WithdrawalsHash = new(common.Hash)
+		*cpy.WithdrawalsHash = *h.WithdrawalsHash
 	}
 	return &cpy
 }

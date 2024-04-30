@@ -3,7 +3,7 @@ set -e
 
 cd ../minigeth
 export GOOS=linux
-export GOARCH=mips
+export GOARCH=mips64
 export GOMIPS=softfloat
 go build -o ../mipsevm/minigeth
 

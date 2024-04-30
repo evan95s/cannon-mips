@@ -47,16 +47,24 @@ func Preimages() map[common.Hash][]byte {
 type PreimageKeyValueWriter struct{}
 
 // Put inserts the given value into the key-value data store.
-func (kw PreimageKeyValueWriter) Put(key []byte, value []byte) error {
+func (kw *PreimageKeyValueWriter) Put(key []byte, value []byte) error {
 	hash := crypto.Keccak256Hash(value)
 	if hash != common.BytesToHash(key) {
 		panic("bad preimage value write")
 	}
 	preimages[hash] = common.CopyBytes(value)
+	memoryDB.Put(hash.Bytes(), common.CopyBytes(value))
 	return nil
 }
 
-// Delete removes the key from the key-value data store.
-func (kw PreimageKeyValueWriter) Delete(key []byte) error {
-	return nil
+// WriteFn is a replacer of Put
+// However, path is still unknown
+// hash is common.BytesToHash(key)
+// blob is value
+func (kw *PreimageKeyValueWriter) WriteFn(path []byte, hash common.Hash, blob []byte) {
+	if hash != crypto.Keccak256Hash(blob) {
+		panic("bad preimage value write")
+	}
+	preimages[hash] = common.CopyBytes(blob)
+	memoryDB.Put(hash.Bytes(), common.CopyBytes(blob))
 }

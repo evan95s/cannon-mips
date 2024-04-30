@@ -127,6 +127,7 @@ func unhash(addrHash common.Hash) common.Address {
 var cached = make(map[string]bool)
 
 func PrefetchStorage(blockNumber *big.Int, addr common.Address, skey common.Hash, postProcess func(map[common.Hash][]byte)) {
+	// fmt.Println("prefetch storage with block ", blockNumber.Uint64(), ", addr ", addr, ",skey ", skey)
 	key := fmt.Sprintf("proof_%d_%s_%s", blockNumber, addr, skey)
 	if cached[key] {
 		return
@@ -141,6 +142,7 @@ func PrefetchStorage(blockNumber *big.Int, addr common.Address, skey common.Hash
 		hash := crypto.Keccak256Hash(ret)
 		//fmt.Println("   ", i, hash)
 		newPreimages[hash] = ret
+		// fmt.Println("[storage]new pre images with key:", hash)
 	}
 
 	if postProcess != nil {
@@ -149,10 +151,12 @@ func PrefetchStorage(blockNumber *big.Int, addr common.Address, skey common.Hash
 
 	for hash, val := range newPreimages {
 		preimages[hash] = val
+		memoryDB.Put(hash.Bytes(), val)
 	}
 }
 
 func PrefetchAccount(blockNumber *big.Int, addr common.Address, postProcess func(map[common.Hash][]byte)) {
+	// fmt.Println("prefetch account with block ", blockNumber.Uint64(), ", addr ", addr)
 	key := fmt.Sprintf("proof_%d_%s", blockNumber, addr)
 	if cached[key] {
 		return
@@ -165,7 +169,9 @@ func PrefetchAccount(blockNumber *big.Int, addr common.Address, postProcess func
 		ret, _ := hex.DecodeString(s[2:])
 		hash := crypto.Keccak256Hash(ret)
 		newPreimages[hash] = ret
+		// fmt.Println("[account]new pre images with key:", hash)
 	}
+	// fmt.Println("newimage len is:", len(newPreimages))
 
 	if postProcess != nil {
 		postProcess(newPreimages)
@@ -173,10 +179,19 @@ func PrefetchAccount(blockNumber *big.Int, addr common.Address, postProcess func
 
 	for hash, val := range newPreimages {
 		preimages[hash] = val
+		memoryDB.Put(hash.Bytes(), val)
+	}
+}
+
+func UpdateAccount(blockNumber *big.Int, addr common.Address) {
+	key := fmt.Sprintf("proof_%d_%s", blockNumber, addr)
+	if !cached[key] {
+		panic("update an account unknown")
 	}
 }
 
 func PrefetchCode(blockNumber *big.Int, addrHash common.Hash) {
+	// fmt.Println("prefetch code with block ", blockNumber.Uint64(), ", addr ", addrHash)
 	key := fmt.Sprintf("code_%d_%s", blockNumber, addrHash)
 	if cached[key] {
 		return
@@ -185,6 +200,8 @@ func PrefetchCode(blockNumber *big.Int, addrHash common.Hash) {
 	ret := getProvedCodeBytes(blockNumber, addrHash)
 	hash := crypto.Keccak256Hash(ret)
 	preimages[hash] = ret
+	// fmt.Println("[code]new pre images with key:", hash)
+	memoryDB.Put(hash.Bytes(), ret)
 }
 
 var inputhash common.Hash
@@ -254,6 +271,7 @@ func prefetchUncles(blockHash common.Hash, uncleHash common.Hash, hasher types.T
 	}
 
 	preimages[hash] = unclesRlp
+	memoryDB.Put(hash.Bytes(), unclesRlp)
 }
 
 func PrefetchBlock(blockNumber *big.Int, startBlock bool, hasher types.TrieHasher) {
@@ -272,12 +290,15 @@ func PrefetchBlock(blockNumber *big.Int, startBlock bool, hasher types.TrieHashe
 	//fmt.Println(jr.Result)
 	blockHeader := jr.Result.ToHeader()
 
+	fmt.Printf("%+v\n", blockHeader)
+
 	// put in the start block header
 	if startBlock {
 		blockHeaderRlp, err := rlp.EncodeToBytes(&blockHeader)
 		check(err)
 		hash := crypto.Keccak256Hash(blockHeaderRlp)
 		preimages[hash] = blockHeaderRlp
+		memoryDB.Put(hash.Bytes(), blockHeaderRlp)
 		emptyHash := common.Hash{}
 		if inputs[0] == emptyHash {
 			inputs[0] = hash
@@ -291,7 +312,7 @@ func PrefetchBlock(blockNumber *big.Int, startBlock bool, hasher types.TrieHashe
 		panic("block transition isn't correct")
 	}
 	inputs[1] = blockHeader.TxHash
-	inputs[2] = blockHeader.Coinbase.Hash()
+	inputs[2] = common.BytesToHash(blockHeader.Coinbase.Bytes())
 	inputs[3] = blockHeader.UncleHash
 	inputs[4] = common.BigToHash(big.NewInt(int64(blockHeader.GasLimit)))
 	inputs[5] = common.BigToHash(big.NewInt(int64(blockHeader.Time)))
@@ -303,6 +324,7 @@ func PrefetchBlock(blockNumber *big.Int, startBlock bool, hasher types.TrieHashe
 	}
 	inputhash = crypto.Keccak256Hash(saveinput)
 	preimages[inputhash] = saveinput
+	memoryDB.Put(inputhash.Bytes(), saveinput)
 	ioutil.WriteFile(fmt.Sprintf("%s/input", root), inputhash.Bytes(), 0644)
 	//ioutil.WriteFile(fmt.Sprintf("%s/input", root), saveinput, 0644)
 
